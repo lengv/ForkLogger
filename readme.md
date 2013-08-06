@@ -1,4 +1,4 @@
-Arduino CAN & sensor logger
+'ForkLogger' Arduino CAN & sensor logger
 ====================================================
 
 Log CAN & other sensor data to UART & SD card.
@@ -7,6 +7,7 @@ Required hardware
 -----------------
 - Arduino (Uno/Mega?)
 - Sparkfun CAN-BUS shield (https://www.sparkfun.com/products/10039)
+- Sparkfun MPU-9150 breakout board (https://www.sparkfun.com/products/11486)
 
 Required software
 -----------------
