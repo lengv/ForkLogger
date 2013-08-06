@@ -21,7 +21,7 @@ Arduino IDE build
 -----------------
 
 - Get Arduino IDE (1.0.5 on Windows 7 is tested)
-- Copy contents of libs dir to Arduino libs dir
+- Copy contents of software/arduino/libs dir to Arduino libs dir
  - Note that SD is part of the 1.0.5 IDE, however you need to
    use the later version included in this project for the Canbus
    example to compile.
