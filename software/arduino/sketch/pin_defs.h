@@ -22,7 +22,7 @@
 #define LOAD  A7
 
 // CAN Shield
-#define CAN_INT  2
+//#define CAN_INT  2
 #define CAN_LED1 7
 #define CAN_LED2 8
 
@@ -30,6 +30,16 @@
 #define LCD 6
 
 // Encoders
-#define A_INT
+#define A1_INT 23
+#define A2_INT 24
+#define B1_INT 2
+#define B2_INT 3
+//#define B1_INT 27
+//#define B2_INT 28
+
+//#define COUNT_A 23
+//#define COUNT_B 24
+//#define DIR_A   27
+//#define DIR_B   28
 
 #endif
