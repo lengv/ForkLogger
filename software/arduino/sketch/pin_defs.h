@@ -21,4 +21,15 @@
 #define REACH A6
 #define LOAD  A7
 
+// CAN Shield
+#define CAN_INT  2
+#define CAN_LED1 7
+#define CAN_LED2 8
+
+// LCD
+#define LCD 6
+
+// Encoders
+#define A_INT
+
 #endif
