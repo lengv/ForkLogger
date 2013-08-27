@@ -180,7 +180,8 @@ public:
 	}
 */
 
-private:
+// This was changed from private to public.
+public:
 	static void update(Encoder_internal_state_t *arg) {
 #if defined(__AVR__)
 		// The compiler believes this is just 1 line of code, so
