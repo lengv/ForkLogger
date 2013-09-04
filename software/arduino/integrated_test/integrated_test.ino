@@ -6,10 +6,10 @@
 #define DEBUG       // Open up USB serial connection and other debug info
 #define MEGA1280    // Broken SPI pins so turn off CAN and SD
 
-#define CAN_ON      // Using the CAN bus
-#define LCD_ON      // Using the serial LCD
+//#define CAN_ON      // Using the CAN bus
+//#define LCD_ON      // Using the serial LCD
 #define IMU_ON      // Using the IMU/MPU
-#define SD_ON       // Logging to SD
+//#define SD_ON       // Logging to SD
 #define RTC_ON      // Using real time clock
 #define JOYSTICK_ON // Using joystick. Turn off if using a UNO
 
@@ -60,20 +60,21 @@ int LED1 = 13;
 // Timing count
 int count = 0;
 
-#ifdef MEGA1280
-    //=== CAN ===//
-    #ifdef CAN_ON
-        // CAN LEDs
-        int LED2 = 8;
-        int LED3 = 7;
-    #endif
-    
-    //=== SD ===//
-    #ifdef SD_ON
-        const int chipSelect = 9;
+// Prints to serial checking debug flag
+void serialPrint(char* out);
 
-        File dataFile;
-    #endif
+//=== CAN ===//
+#ifdef CAN_ON
+    // CAN LEDs
+    int LED2 = 8;
+    int LED3 = 7;
+#endif
+
+//=== SD ===//
+#ifdef SD_ON
+    const int chipSelect = 9;
+
+    File dataFile;
 #endif
 
 //=== RTC ===//
@@ -118,6 +119,7 @@ int count = 0;
     #define  DEVICE_TO_USE    0
 
     MPU9150Lib MPU;                             // the MPU object
+    float* pose;
 
     //  MPU_UPDATE_RATE defines the rate (in Hz) at which the MPU updates the sensor data and DMP output
 
@@ -158,7 +160,7 @@ void setup()
   Serial.begin(9600);
   Wire.begin();
   
-  //=============RTC===============//
+  //===RTC===//
   //clear out all the registers
   rtc.initClock();
   //set a time to start with.
@@ -167,11 +169,14 @@ void setup()
   //hr, min, sec
   rtc.setTime(1, 15, 40);
   
-  //==
-  MPU.selectDevice(DEVICE_TO_USE);                        // only really necessary if using device 1
-  MPU.init(MPU_UPDATE_RATE, MPU_MAG_MIX_GYRO_AND_MAG, MAG_UPDATE_RATE, MPU_LPF_RATE);   // start the MPU
+  //===MPU===//
+  // Only necessary if using multiple IMU
+  MPU.selectDevice(DEVICE_TO_USE); 
+  // Start MPU
+  MPU.init(MPU_UPDATE_RATE, MPU_MAG_MIX_GYRO_AND_MAG,
+    MAG_UPDATE_RATE, MPU_LPF_RATE);
   
-  //=============SD CARD===============//
+  //===SD CARD====//
   Serial.print("Initializing SD card...");
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
@@ -193,29 +198,33 @@ void setup()
     while (1) ;
   }
   
-  pinMode(LCDOUT, OUTPUT);
-  
+  //===CAN===//
   pinMode(LED2, OUTPUT); 
   pinMode(LED3, OUTPUT); 
- 
-  digitalWrite(LED2, LOW);
-  pinMode(UP,INPUT);
-  pinMode(DOWN,INPUT);
-  //pinMode(LEFT,INPUT);
-  pinMode(RIGHT,INPUT);
-  //pinMode(CLICK,INPUT);
   
-  digitalWrite(UP, HIGH);       /* Enable internal pull-ups */
-  digitalWrite(DOWN, HIGH);
-  //digitalWrite(LEFT, HIGH);
-  digitalWrite(RIGHT, HIGH);
-  //digitalWrite(CLICK, HIGH);
-  
+  //===LCD===//
+  pinMode(LCDOUT, OUTPUT);
   sLCD.begin(9600);              /* Setup serial LCD and clear the screen */
   clear_lcd();
   sLCD.print("Starting Log");
   
-  delay(1500);
+  //===JOYSTICK===//
+  // Set joystick inputs
+  pinMode(UP,INPUT);
+  pinMode(DOWN,INPUT);
+  pinMode(LEFT,INPUT);          //Clash on the UNO with I2C pins
+  pinMode(RIGHT,INPUT);
+  pinMode(CLICK,INPUT);         //Clash on the UNO with I2C pins
+  
+  // Enable internal pull-ups (active low)
+  digitalWrite(UP, HIGH);       
+  digitalWrite(DOWN, HIGH);
+  digitalWrite(LEFT, HIGH);     //Clash on the UNO with I2C pins
+  digitalWrite(RIGHT, HIGH);
+  digitalWrite(CLICK, HIGH);    //Clash on the UNO with I2C pins
+  
+  // Wait before starting
+  delay(1000);
 }
 //============================================================================//
 
@@ -224,61 +233,83 @@ void loop()
 {
   
   if( count >= 16000){
-    digitalWrite(LED3, HIGH);
+    // Light an LED
+    digitalWrite(LED1, HIGH);
     
-    cur_time = rtc.formatTime();
+    // Get all data
+    // Get Time
+    #ifdef RTC_ON
+        cur_time = rtc.formatTime();
+    #else
+        cur_time = "---";
+    #endif
+    
+    #ifdef IMU_ON
+    // Get pose
+        if (MPU.read()) {                                   // get the latest data if ready yet
+            pose = MPU.m_fusedEulerPose;
+        }
+    #else
+        pose = -1;
+    #endif
+    
+    // Turn off LED
+    digitalWrite(LED1, LOW);
   
-    Serial.print("[");
-    Serial.print(cur_time);
-    Serial.print("]: ");
+    // Print data
+    #ifdef DEBUG
+        Serial.print("[");
+        Serial.print(cur_time);
+        Serial.print("]: ");
+        MPU.printAngles(pose);  // print to Serial (no endl)
+        Serial.println();
+    #endif
     
-    dataFile.print("[");
-    dataFile.print(cur_time);
-    dataFile.print("]: ");
+    #ifdef SD_ON
+        dataFile.print("[");
+        dataFile.print(cur_time);
+        dataFile.print("]: ");
+        printQuaternion(pose);  // print to file (no endl)
+        dataFile.println();
+    #endif
     
-    clear_lcd();
-    sLCD.print(COMMAND);
-    sLCD.print(LINE0);
-    sLCD.print(cur_time);
-    
-    MPU.selectDevice(DEVICE_TO_USE);                         // only needed if device has changed since init but good form anyway
-    if (MPU.read()) {                                        // get the latest data if ready yet
-  //  MPU.printQuaternion(MPU.m_rawQuaternion);              // print the raw quaternion from the dmp
-  //  MPU.printVector(MPU.m_rawMag);                         // print the raw mag data
-  //  MPU.printVector(MPU.m_rawAccel);                       // print the raw accel data
-  //  MPU.printAngles(MPU.m_dmpEulerPose);                   // the Euler angles from the dmp quaternion
-  //  MPU.printVector(MPU.m_calAccel);                       // print the calibrated accel data
-  //  MPU.printVector(MPU.m_calMag);                         // print the calibrated mag data
-      MPU.printAngles(MPU.m_fusedEulerPose);                 // print the output of the data fusion
-      
-      printQuaternion(dataFile,MPU.m_fusedEulerPose);
-      
-    }
-    Serial.println();
-    dataFile.println();
+    #ifdef LCD_ON
+        clear_lcd();
+        sLCD.print(COMMAND);
+        sLCD.print(LINE0);
+        sLCD.print(cur_time);
+    #endif 
 
     count = 0;
     
-     
-    digitalWrite(LED3, LOW);
+    // Remember last time 
+    prev_time = cur_time;
   }
-  
-  //Serial.println(count);
   
   count++;
-  if (digitalRead(UP) == 0){
-    Serial.println("Stopping functionality");
-    clear_lcd();
-    
-    dataFile.flush();
-      
-    sLCD.print("OFF");
-    dataFile.close();
-    while(1);
-  }
   
-//  delay(1000);
-
+  #ifdef JOYSTICK_ON
+      if (digitalRead(CLICK) == 0){
+        #ifdef DEBUG
+            Serial.println("Stopping functionality");
+        #endif
+        
+        #ifdef SD_ON
+            dataFile.flush();
+            dataFile.close();        
+        #endif 
+        
+        #ifdef LCD_ON
+            clear_lcd();
+            sLCD.print("OFF");
+        #endif
+        
+        // Do nothing
+        // TODO: change this to click on/off
+        while(1);
+      }
+  #endif
+  
 }
 //============================================================================//
 
@@ -309,4 +340,10 @@ void loop()
       input.print(" z: "); input.print(quat[QUAT_Z]);  
     }
 #endif 
+
+void serialPrint(char* out){
+   #ifdef DEBUG 
+    Serial.print(out);
+   #endif
+}
 //============================================================================//
