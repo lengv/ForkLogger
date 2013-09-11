@@ -160,8 +160,8 @@ void loop()
     dataFile.print("]: ");
     
     clear_lcd();
-    sLCD.print(COMMAND);
-    sLCD.print(LINE0);
+    sLCD.write(COMMAND);
+    sLCD.write(LINE0);
     sLCD.print(cur_time);
     
 //    MPU.selectDevice(DEVICE_TO_USE);                         // only needed if device has changed since init but good form anyway
