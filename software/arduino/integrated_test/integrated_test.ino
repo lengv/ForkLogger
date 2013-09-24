@@ -1,15 +1,15 @@
 //=== Configuration ==========================================================//
-// Comment out unecessary/unconnected components
+// Comment out unnecessary/unconnected components
 // #defines used to remove components from compilation (should happen) rather 
 // than a check which will leave code in place leading to a bloated file
 
 #define DEBUG       // Open up USB serial connection and other debug info
-#define MEGA1280    // Broken SPI pins so turn off CAN and SD
+//#define MEGA1280    // Broken SPI pins so turn off CAN and SD
 
 //#define CAN_ON      // Using the CAN bus
-//#define LCD_ON      // Using the serial LCD
+#define LCD_ON      // Using the serial LCD
 #define IMU_ON      // Using the IMU/MPU
-//#define SD_ON       // Logging to SD
+#define SD_ON       // Logging to SD
 #define RTC_ON      // Using real time clock
 #define JOYSTICK_ON // Using joystick. Turn off if using a UNO
 
@@ -17,6 +17,8 @@
 
 //=== Libraries ==============================================================//
 // Include libraries of components being used.
+
+#include "pin_defs.h"
 
 #ifndef MEGA1280
     #ifdef CAN_ON
@@ -31,6 +33,7 @@
 
 #ifdef LCD_ON
     #include <SoftwareSerial.h>
+    #include "lcd.h"
 #endif
     
 #ifdef IMU_ON
@@ -43,6 +46,7 @@
     #include <inv_mpu.h>
     #include <inv_mpu_dmp_motion_driver.h>
     #include <EEPROM.h>
+    #include "mpu.h"
 #endif
 
 #ifdef RTC_ON
@@ -66,8 +70,6 @@ void serialPrint(char* out);
 //=== CAN ===//
 #ifdef CAN_ON
     // CAN LEDs
-    int LED2 = 8;
-    int LED3 = 7;
 #endif
 
 //=== SD ===//
@@ -97,8 +99,7 @@ void serialPrint(char* out);
     #define CLEAR   0x01
     #define LINE0   0x80
     #define LINE1   0xC0
-
-    void clear_lcd(void);    
+    
 #endif
 
 //=== Joystick ===//
@@ -148,9 +149,12 @@ void serialPrint(char* out);
     #define  SERIAL_PORT_SPEED  9600
 
     // print quarternion to files
-    void printQuaternion(File input, long *quat);
-    void printQuaternion(File input, float *quat);
+    //void printQuaternion(File input, long *quat);
+    //void printQuaternion(File input, float *quat);
 #endif
+
+unsigned long cur_t;
+unsigned long past_t;
 
 //=== SETUP ==================================================================//
 
@@ -161,13 +165,15 @@ void setup()
   Wire.begin();
   
   //===RTC===//
+  // DON'T DO IF RTC ALREADY CONFIGURED
+  
   //clear out all the registers
-  rtc.initClock();
+  //rtc.initClock();
   //set a time to start with.
   //day, weekday, month, century, year
-  rtc.setDate(14, 6, 3, 20, 10);
+  //rtc.setDate(14, 6, 3, 20, 10);
   //hr, min, sec
-  rtc.setTime(1, 15, 40);
+  //rtc.setTime(1, 15, 40);
   
   //===MPU===//
   // Only necessary if using multiple IMU
@@ -199,13 +205,13 @@ void setup()
   }
   
   //===CAN===//
-  pinMode(LED2, OUTPUT); 
-  pinMode(LED3, OUTPUT); 
+  pinMode(CAN_LED1, OUTPUT); 
+  pinMode(CAN_LED2, OUTPUT); 
   
   //===LCD===//
   pinMode(LCDOUT, OUTPUT);
   sLCD.begin(9600);              /* Setup serial LCD and clear the screen */
-  clear_lcd();
+  clear_lcd(sLCD);
   sLCD.print("Starting Log");
   
   //===JOYSTICK===//
@@ -231,7 +237,8 @@ void setup()
 //=== Main Loop ==============================================================//
 void loop()
 {
-  
+
+  // Slowing down poll rate
   if( count >= 16000){
     // Light an LED
     digitalWrite(LED1, HIGH);
@@ -262,21 +269,27 @@ void loop()
         Serial.print(cur_time);
         Serial.print("]: ");
         MPU.printAngles(pose);  // print to Serial (no endl)
+        Serial.print(" time: ");
+        past_t=cur_t;
+        cur_t=millis();
+        Serial.print(cur_t - past_t);
         Serial.println();
+
     #endif
     
     #ifdef SD_ON
         dataFile.print("[");
         dataFile.print(cur_time);
         dataFile.print("]: ");
-        printQuaternion(pose);  // print to file (no endl)
+        writeAngle(dataFile,pose);  // print to file (no endl)
         dataFile.println();
     #endif
     
     #ifdef LCD_ON
-        clear_lcd();
-        sLCD.print(COMMAND);
-        sLCD.print(LINE0);
+        //resetLCD(sLCD);
+        clear_lcd(sLCD);
+        sLCD.write(COMMAND);
+        sLCD.write(LINE0);
         sLCD.print(cur_time);
     #endif 
 
@@ -300,7 +313,7 @@ void loop()
         #endif 
         
         #ifdef LCD_ON
-            clear_lcd();
+            clear_lcd(sLCD);
             sLCD.print("OFF");
         #endif
         
@@ -314,32 +327,6 @@ void loop()
 //============================================================================//
 
 //== Aux functions ===========================================================//
-
-#ifdef LCD_ON
-    void clear_lcd(void)
-    {
-      sLCD.write(COMMAND);
-      sLCD.write(CLEAR);
-    }
-#endif
-
-#ifdef IMU
-    void printQuaternion(File input, long *quat)
-    {
-      input.print("w: "); input.print(quat[QUAT_W]);  
-      input.print(" x: "); input.print(quat[QUAT_X]);  
-      input.print(" y: "); input.print(quat[QUAT_Y]);  
-      input.print(" z: "); input.print(quat[QUAT_Z]);  
-    }
-
-    void printQuaternion(File input, float *quat)
-    {
-      input.print("w: "); input.print(quat[QUAT_W]);  
-      input.print(" x: "); input.print(quat[QUAT_X]);  
-      input.print(" y: "); input.print(quat[QUAT_Y]);  
-      input.print(" z: "); input.print(quat[QUAT_Z]);  
-    }
-#endif 
 
 void serialPrint(char* out){
    #ifdef DEBUG 
