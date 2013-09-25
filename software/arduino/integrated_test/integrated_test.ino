@@ -6,12 +6,13 @@
 #define DEBUG       // Open up USB serial connection and other debug info
 //#define MEGA1280    // Broken SPI pins so turn off CAN and SD
 
-//#define CAN_ON      // Using the CAN bus
-#define LCD_ON      // Using the serial LCD
-#define IMU_ON      // Using the IMU/MPU
-#define SD_ON       // Logging to SD
-#define RTC_ON      // Using real time clock
-#define JOYSTICK_ON // Using joystick. Turn off if using a UNO
+#define CAN_ON        // Using the CAN bus
+#define LCD_ON        // Using the serial LCD
+#define IMU_ON        // Using the IMU/MPU
+#define SD_ON         // Logging to SD
+#define RTC_ON        // Using real time clock
+#define JOYSTICK_ON   // Using joystick. Turn off if using a UNO
+#define STRING_POT_ON //Use string pots
 
 //============================================================================//
 
@@ -52,6 +53,10 @@
 #ifdef RTC_ON
     #include <Wire.h>
     #include <Rtc_Pcf8563.h>
+#endif
+
+#ifdef STRING_POT_ON
+    #include "string_pot.h"
 #endif
 //============================================================================//
 
@@ -153,6 +158,11 @@ void serialPrint(char* out);
     //void printQuaternion(File input, float *quat);
 #endif
 
+#ifdef STRING_POT_ON
+  float mast_height=0;
+  float mast_reach=0;
+#endif
+
 unsigned long cur_t;
 unsigned long past_t;
 
@@ -175,13 +185,16 @@ void setup()
   //hr, min, sec
   //rtc.setTime(1, 15, 40);
   
+  #ifdef IMU_ON
   //===MPU===//
   // Only necessary if using multiple IMU
   MPU.selectDevice(DEVICE_TO_USE); 
   // Start MPU
   MPU.init(MPU_UPDATE_RATE, MPU_MAG_MIX_GYRO_AND_MAG,
     MAG_UPDATE_RATE, MPU_LPF_RATE);
+  #endif
   
+  #ifdef SD_ON
   //===SD CARD====//
   Serial.print("Initializing SD card...");
   // make sure that the default chip select pin is set to
@@ -203,17 +216,23 @@ void setup()
     // Wait forever since we cant write data
     while (1) ;
   }
+  #endif
   
+  #ifdef CAN_ON
   //===CAN===//
   pinMode(CAN_LED1, OUTPUT); 
   pinMode(CAN_LED2, OUTPUT); 
+  #endif
   
+  #ifdef LCD_ON
   //===LCD===//
   pinMode(LCDOUT, OUTPUT);
   sLCD.begin(9600);              /* Setup serial LCD and clear the screen */
   clear_lcd(sLCD);
   sLCD.print("Starting Log");
+  #endif
   
+  #ifdef JOYSTICK_ON
   //===JOYSTICK===//
   // Set joystick inputs
   pinMode(UP,INPUT);
@@ -228,9 +247,18 @@ void setup()
   digitalWrite(LEFT, HIGH);     //Clash on the UNO with I2C pins
   digitalWrite(RIGHT, HIGH);
   digitalWrite(CLICK, HIGH);    //Clash on the UNO with I2C pins
+  #endif
+  
+  #ifdef STRING_POT_ON
+    generate_offset(MAST_HEIGHT, &height_offset, 500);
+//    generate_offset(MAST_REACH, reach_offset);
+    Serial.print("Calibrating mast height - offset: ");
+    //Serial.println(MAST_HEIGHT_RES);
+    Serial.println(height_offset);
+  #endif
   
   // Wait before starting
-  delay(1000);
+  delay(2000);
 }
 //============================================================================//
 
@@ -239,7 +267,7 @@ void loop()
 {
 
   // Slowing down poll rate
-  if( count >= 16000){
+  if( count >= 100){
     // Light an LED
     digitalWrite(LED1, HIGH);
     
@@ -260,28 +288,38 @@ void loop()
         pose = -1;
     #endif
     
+    #ifdef STRING_POT_ON
+      mast_height = get_mast_height(MAST_HEIGHT);
+    #endif
+    
     // Turn off LED
     digitalWrite(LED1, LOW);
   
+//===========Display==========================================================//
     // Print data
     #ifdef DEBUG
         Serial.print("[");
         Serial.print(cur_time);
-        Serial.print("]: ");
+        Serial.print("]:: ");
+        Serial.print(" Pose:");
         MPU.printAngles(pose);  // print to Serial (no endl)
         Serial.print(" time: ");
         past_t=cur_t;
         cur_t=millis();
         Serial.print(cur_t - past_t);
+        Serial.print(" Height: ");
+        Serial.print(mast_height);
         Serial.println();
-
     #endif
     
     #ifdef SD_ON
         dataFile.print("[");
         dataFile.print(cur_time);
-        dataFile.print("]: ");
+        dataFile.print("]:: ");
+        dataFile.print(" Pose:");
         writeAngle(dataFile,pose);  // print to file (no endl)
+        dataFile.print(" Height: ");
+        dataFile.print(mast_height);
         dataFile.println();
     #endif
     
