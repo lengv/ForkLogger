@@ -18,6 +18,8 @@
 #define MAF_SENSOR          0x10
 #define O2_VOLTAGE          0x14
 #define THROTTLE			0x11
+#define STEERING_ANGLE      0xC9
+#define VELOCITY_COMMAND    0xDD
 
 #define PID_REQUEST         0x7DF
 #define PID_REPLY			0x7E8

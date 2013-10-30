@@ -3,6 +3,12 @@
  *
  * Copyright (c) 2008-2009  All rights reserved.
  */
+ 
+ /**
+ * Content modified by Leng Vongchanh 2013
+ * Translated some messages to English
+ * Added a few more cases to the ecu_req
+ */
 
 #if ARDUINO>=100
 #include <Arduino.h> // Arduino 1.0
@@ -23,7 +29,8 @@
 #include "defaults.h"
 #include "Canbus.h"
 
-
+#define VELOCITY_COMMAND 0xDE
+#define STEERING_ANGLE 0xC9
 
 
 /* C++ wrapper */
@@ -37,7 +44,7 @@ char CanbusClass::message_rx(unsigned char *buffer) {
 		if (mcp2515_check_message()) {
 		
 			
-			// Lese die Nachricht aus dem Puffern des MCP2515
+			// Read the message from the buffer of MCP2515
 			if (mcp2515_get_message(&message)) {
 			//	print_can_message(&message);
 			//	PRINT("\n");
@@ -55,7 +62,7 @@ char CanbusClass::message_rx(unsigned char *buffer) {
 //				buffer[] = message[];																												
 			}
 			else {
-			//	PRINT("Kann die Nachricht nicht auslesen\n\n");
+			//	PRINT("Error" Message could not be read!\n\n");
 			}
 		}
 
@@ -65,7 +72,7 @@ char CanbusClass::message_tx(void) {
 	tCAN message;
 
 
-	// einige Testwerte
+	// some test values(???) [einige Testwerte ]
 	message.id = 0x7DF;
 	message.header.rtr = 0;
 	message.header.length = 8;
@@ -90,7 +97,7 @@ char CanbusClass::message_tx(void) {
 	
 	}
 	else {
-	//	PRINT("Fehler: konnte die Nachricht nicht auslesen\n\n");
+	//	PRINT("Error: Could not retrieve message\n\n");
 	return 0;
 	}
 return 1;
@@ -165,7 +172,23 @@ char CanbusClass::ecu_req(unsigned char pid,  char *buffer)
 									engine_data = (message.data[3]*100)/255;
 									sprintf(buffer,"%d %% ",(int) engine_data);
 									break;
-							
+/*==== ADDED CONTENT =========================================================*/
+									case STEERING_ANGLE:
+									    engine_data =  message.data[3];
+									    sprintf(buffer,"%d deg ",(int) engine_data);
+									break;
+									
+									case VELOCITY_COMMAND:
+									    engine_data =  message.data[3];
+									    sprintf(buffer,"%d ? ",(int) engine_data);
+									break;
+							        
+							        //Add more if we need to monitor anything elsepac
+							        /*case MAST_REACH;
+							            
+							        break;
+							        */
+/*============================================================================*/
 								}
 								message_ok = 1;
 							}
