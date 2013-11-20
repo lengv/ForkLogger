@@ -12,7 +12,8 @@
 #define SD_ON         // Logging to SD
 #define RTC_ON        // Using real time clock
 #define JOYSTICK_ON   // Using joystick. Turn off if using a UNO
-#define STRING_POT_ON //Use string pots
+#define STRING_POT_ON // Use string pots
+#define ENCODER_ON    // Using encoders
 
 //============================================================================//
 
@@ -21,43 +22,36 @@
 
 #include "pin_defs.h"
 
-#ifndef MEGA1280
-    #ifdef CAN_ON
-        #include <SPI.h>
-    #endif
-    
-    #ifdef SD_ON
-        #include <SPI.h>
-        #include <SD.h>
-    #endif
-#endif
+#include <SPI.h>
 
-#ifdef LCD_ON
-    #include <SoftwareSerial.h>
-    #include "lcd.h"
-#endif
-    
-#ifdef IMU_ON
-    #include <Wire.h>
-    #include "I2Cdev.h"
-    #include "MPU9150Lib.h"
-    #include "CalLib.h"
-    #include <dmpKey.h>
-    #include <dmpmap.h>
-    #include <inv_mpu.h>
-    #include <inv_mpu_dmp_motion_driver.h>
-    #include <EEPROM.h>
-    #include "mpu.h"
-#endif
+#include <SPI.h>
+#include <SD.h>
 
-#ifdef RTC_ON
-    #include <Wire.h>
-    #include <Rtc_Pcf8563.h>
-#endif
+#include "lcd.h"
+#include <SoftwareSerial.h>
+ 
+#include <Wire.h>
+#include "I2Cdev.h"
+#include "MPU9150Lib.h"
+#include "CalLib.h"
+#include <dmpKey.h>
+#include <dmpmap.h>
+#include <inv_mpu.h>
+#include <inv_mpu_dmp_motion_driver.h>
+#include <EEPROM.h>
+#include "mpu.h"
 
-#ifdef STRING_POT_ON
-    #include "string_pot.h"
-#endif
+#include <Wire.h>
+#include <Rtc_Pcf8563.h>
+
+#include "string_pot.h"
+
+#include <Encoder.h>
+#include "truck_encoder.h"
+
+
+#include <Canbus.h>
+
 //============================================================================//
 
 //=== Init ===================================================================//
@@ -75,6 +69,7 @@ void serialPrint(char* out);
 //=== CAN ===//
 #ifdef CAN_ON
     // CAN LEDs
+    char buffer[512];
 #endif
 
 //=== SD ===//
@@ -217,36 +212,42 @@ void setup()
     while (1) ;
   }
   #endif
-  
+
   #ifdef CAN_ON
-  //===CAN===//
-  pinMode(CAN_LED1, OUTPUT); 
-  pinMode(CAN_LED2, OUTPUT); 
+    //===CAN===//
+    pinMode(CAN_LED1, OUTPUT); 
+    pinMode(CAN_LED2, OUTPUT);
+    
+    if(Canbus.init(CANSPEED_250)){
+      Serial.println('Can Initialised');
+    } else{
+      Serial.println('Can failed to initialised');
+    }
   #endif
   
   #ifdef LCD_ON
-  //===LCD===//
-  pinMode(LCDOUT, OUTPUT);
-  sLCD.begin(9600);              /* Setup serial LCD and clear the screen */
-  clear_lcd(sLCD);
-  sLCD.print("Starting Log");
+    //===LCD===//
+    pinMode(LCDOUT, OUTPUT);
+    sLCD.begin(9600);              /* Setup serial LCD and clear the screen */
+    clear_lcd(sLCD);
+    sLCD.print("Starting Log");
   #endif
   
   #ifdef JOYSTICK_ON
-  //===JOYSTICK===//
-  // Set joystick inputs
-  pinMode(UP,INPUT);
-  pinMode(DOWN,INPUT);
-  pinMode(LEFT,INPUT);          //Clash on the UNO with I2C pins
-  pinMode(RIGHT,INPUT);
-  pinMode(CLICK,INPUT);         //Clash on the UNO with I2C pins
-  
-  // Enable internal pull-ups (active low)
-  digitalWrite(UP, HIGH);       
-  digitalWrite(DOWN, HIGH);
-  digitalWrite(LEFT, HIGH);     //Clash on the UNO with I2C pins
-  digitalWrite(RIGHT, HIGH);
-  digitalWrite(CLICK, HIGH);    //Clash on the UNO with I2C pins
+    //===JOYSTICK===//
+    // Set joystick inputs
+    pinMode(UP,INPUT);
+    pinMode(DOWN,INPUT);
+    pinMode(LEFT,INPUT);          //Clash on the UNO with I2C pins
+    pinMode(RIGHT,INPUT);
+    pinMode(CLICK,INPUT);         //Clash on the UNO with I2C pins
+    
+    // Enable internal pull-ups (active low)
+    digitalWrite(UP, HIGH);       
+    digitalWrite(DOWN, HIGH);
+    digitalWrite(LEFT, HIGH);     //Clash on the UNO with I2C pins
+    digitalWrite(RIGHT, HIGH);
+    digitalWrite(CLICK, HIGH);    //Clash on the UNO with I2C pins
   #endif
   
   #ifdef STRING_POT_ON
@@ -291,25 +292,44 @@ void loop()
     #ifdef STRING_POT_ON
       mast_height = get_mast_height(MAST_HEIGHT);
     #endif
+//    int i=0;
+//    for(i=1; i<0xff ; i++){
+//    #ifdef CAN_ON
+//      if(Canbus.ecu_req(i,buffer)==1)          /* Request for engine RPM */
+//      {
+//        Serial.print("CAN detected");
+//        Serial.println(i);
+//      }
+//    #endif
+//    
+//    
+//    }
     
+    while(Canbus.ecu_req(STEERING_ANGLE,buffer) !=1){
+      Serial.println("waiting");
+    }
+    
+    Serial.println("woo");
     // Turn off LED
     digitalWrite(LED1, LOW);
   
 //===========Display==========================================================//
     // Print data
     #ifdef DEBUG
-        Serial.print("[");
-        Serial.print(cur_time);
-        Serial.print("]:: ");
-        Serial.print(" Pose:");
-        MPU.printAngles(pose);  // print to Serial (no endl)
-        Serial.print(" time: ");
-        past_t=cur_t;
-        cur_t=millis();
-        Serial.print(cur_t - past_t);
-        Serial.print(" Height: ");
-        Serial.print(mast_height);
-        Serial.println();
+//        Serial.print("[");
+//        Serial.print(cur_time);
+//        Serial.print("]:: ");
+//        Serial.print(" Pose:");
+//        MPU.printAngles(pose);  // print to Serial (no endl)
+//        Serial.print(" time: ");
+//        past_t=cur_t;
+//        cur_t=millis();
+//        Serial.print(cur_t - past_t);
+//        Serial.print(" Height: ");
+//        Serial.print(mast_height);
+//        Serial.print(" Angle: ");
+//        Serial.print(buffer);
+//        Serial.println();
     #endif
     
     #ifdef SD_ON
@@ -320,6 +340,8 @@ void loop()
         writeAngle(dataFile,pose);  // print to file (no endl)
         dataFile.print(" Height: ");
         dataFile.print(mast_height);
+        dataFile.print(" Angle: ");
+        dataFile.print(buffer);
         dataFile.println();
     #endif
     

@@ -12,9 +12,9 @@
 
 void writeAngle(File input, float *vec)
 {
-  input.print("x: "); input.print(vec[VEC3_X] * RAD_TO_DEGREE);  
-  input.print(" y: "); input.print(vec[VEC3_Y] * RAD_TO_DEGREE);  
-  input.print(" z: "); input.print(vec[VEC3_Z] * RAD_TO_DEGREE);    
+  input.print("x:"); input.print(vec[VEC3_X] * RAD_TO_DEGREE);  
+  input.print(",y:"); input.print(vec[VEC3_Y] * RAD_TO_DEGREE);  
+  input.print(",z:"); input.print(vec[VEC3_Z] * RAD_TO_DEGREE);    
 }
 
 #endif
