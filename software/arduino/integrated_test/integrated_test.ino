@@ -41,7 +41,6 @@
 #include <EEPROM.h>
 #include "mpu.h"
 
-#include <Wire.h>
 #include <Rtc_Pcf8563.h>
 
 #include "string_pot.h"
@@ -49,8 +48,9 @@
 #include <Encoder.h>
 #include "truck_encoder.h"
 
-
 #include <Canbus.h>
+
+//#include "wire_pullups_off.h"
 
 //============================================================================//
 
