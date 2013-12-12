@@ -120,7 +120,7 @@ void serialPrint(char* out);
     #define  DEVICE_TO_USE    0
 
     MPU9150Lib MPU;                             // the MPU object
-    float* pose;
+    float* heading;
 
     //  MPU_UPDATE_RATE defines the rate (in Hz) at which the MPU updates the sensor data and DMP output
 
@@ -281,12 +281,12 @@ void loop()
     #endif
     
     #ifdef IMU_ON
-    // Get pose
+    // Get heading
         if (MPU.read()) {                                   // get the latest data if ready yet
-            pose = MPU.m_fusedEulerPose;
+            heading = MPU.m_fusedEulerPose;
         }
     #else
-        pose = -1;
+        heading = -1;
     #endif
     
     #ifdef STRING_POT_ON
@@ -316,28 +316,28 @@ void loop()
 //===========Display==========================================================//
     // Print data
     #ifdef DEBUG
-//        Serial.print("[");
-//        Serial.print(cur_time);
-//        Serial.print("]:: ");
-//        Serial.print(" Pose:");
-//        MPU.printAngles(pose);  // print to Serial (no endl)
-//        Serial.print(" time: ");
-//        past_t=cur_t;
-//        cur_t=millis();
-//        Serial.print(cur_t - past_t);
-//        Serial.print(" Height: ");
-//        Serial.print(mast_height);
-//        Serial.print(" Angle: ");
-//        Serial.print(buffer);
-//        Serial.println();
+        Serial.print("[");
+        Serial.print(cur_time);
+        Serial.print("]:: ");
+        Serial.print(" heading:");
+        MPU.printAngles(heading);  // print to Serial (no endl)
+        Serial.print(" time: ");
+        past_t=cur_t;
+        cur_t=millis();
+        Serial.print(cur_t - past_t);
+        Serial.print(" Height: ");
+        Serial.print(mast_height);
+        Serial.print(" Angle: ");
+        Serial.print(buffer);
+        Serial.println();
     #endif
     
     #ifdef SD_ON
         dataFile.print("[");
         dataFile.print(cur_time);
         dataFile.print("]:: ");
-        dataFile.print(" Pose:");
-        writeAngle(dataFile,pose);  // print to file (no endl)
+        dataFile.print(" heading:");
+        writeAngle(dataFile,heading);  // print to file (no endl)
         dataFile.print(" Height: ");
         dataFile.print(mast_height);
         dataFile.print(" Angle: ");
