@@ -24,7 +24,7 @@ class Truck_Enc
     Truck_Enc(float _encoder_radius, uint8_t left1, uint8_t left2, uint8_t right1, uint8_t right2)
       :enc_left(left1,left2), enc_right(right1,right2){
       
-      encoder_radius = _encoder_radius;
+      encoder_radius = _encoder_radius; // For gearing
       calc_counts_per_rev();
     }
     
